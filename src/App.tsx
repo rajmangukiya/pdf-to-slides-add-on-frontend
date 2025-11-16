@@ -140,7 +140,7 @@ function App() {
             <div className="flex flex-col gap-2 w-full bg-gray-100 p-4 rounded-lg">
               <div className="flex items-center justify-between w-full">
                 <div className="flex-1 truncate">
-                  <p className="font-medium truncate">{pdfFile.name}</p>
+                  <p className="font-medium truncate text-wrap">{pdfFile.name}</p>
                   <p className="text-sm text-gray-500">
                     {(pdfFile.size / 1024).toFixed(2)} KB
                   </p>
