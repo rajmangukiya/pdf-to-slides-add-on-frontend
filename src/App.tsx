@@ -3,67 +3,15 @@ import { BsStars } from "react-icons/bs";
 import { useState, useRef } from "react";
 import { convertPdfToSlides } from "./firebase";
 import type { SlideData } from "./types";
+import { fileToBase64 } from "./helper";
 
-// const dummySlidesData = {
-//   "success": true,
-//   "data": {
-//     "slides": [
-//       {
-//         "title": "Introduction to AI",
-//         "bullets": [
-//           "Defining Artificial Intelligence: What it is and its core concepts",
-//           "A brief history of AI: From early ideas to modern breakthroughs",
-//           "Key applications of AI across various industries and domains"
-//         ]
-//       },
-//       {
-//         "title": "Machine Learning Fundamentals",
-//         "bullets": [
-//           "Supervised Learning: Training with labeled data for prediction and classification",
-//           "Unsupervised Learning: Discovering patterns in unlabeled data for clustering and association",
-//           "Reinforcement Learning: Learning through trial and error with rewards and penalties"
-//         ]
-//       },
-//       {
-//         "title": "Deep Learning Explained",
-//         "bullets": [
-//           "Understanding Neural Networks: The building blocks of deep learning",
-//           "Convolutional Neural Networks (CNNs): Specialized for image and video processing",
-//           "Recurrent Neural Networks (RNNs): Designed for sequential data like text and time series"
-//         ]
-//       },
-//       {
-//         "title": "Natural Language Processing (NLP)",
-//         "bullets": [
-//           "Tokenization: Breaking down text into manageable units for analysis",
-//           "Transformers: The architecture behind advanced language models",
-//           "ChatGPT: A powerful example of generative AI in natural language understanding and generation"
-//         ]
-//       },
-//       {
-//         "title": "Computer Vision Insights",
-//         "bullets": [
-//           "Image Classification: Identifying and categorizing objects within images",
-//           "Object Detection: Locating and identifying multiple objects in an image or video frame"
-//         ]
-//       }
-//     ]
-//   },
-//   "metadata": {
-//     "model": "gemini-2.5-flash",
-//     "pagesProcessed": 5,
-//     "slidesGenerated": 5
-//   }
-// }
 
-// For TypeScript or JS with JSX
 declare const google: any;
 
 function App() {
   const [loading, setLoading] = useState(false);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [status, setStatus] = useState<string>("");
-  const [progress, setProgress] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -88,28 +36,44 @@ function App() {
   };
 
   const handleDeleteFile = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent triggering the file input
+    e.stopPropagation();
     setPdfFile(null);
     setStatus("");
-    setProgress(0);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
-  // Convert File to base64 string
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        // Remove the data URL prefix (e.g., "data:application/pdf;base64,")
-        const base64 = (reader.result as string).split(',')[1];
-        resolve(base64);
-      };
-      reader.onerror = (error) => reject(error);
-      reader.readAsDataURL(file);
-    });
-  };
+  const callGoogleAppScript = (slidesData: SlideData) => {
+    if (google?.script?.run) {
+      google.script.run
+        .withSuccessHandler(() => {
+          setLoading(false);
+          setStatus("✅ Slides created successfully!");
+          console.log("Slides created successfully!");
+
+          // Reset after 3 seconds
+          setTimeout(() => {
+            setStatus("");
+            setPdfFile(null);
+            if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+            }
+          }, 3000);
+        })
+        .withFailureHandler((error: any) => {
+          setLoading(false);
+          setStatus("❌ Error creating slides in Google Slides");
+          console.error("Google Apps Script error:", error);
+          alert("Error creating slides: " + error.message);
+        })
+        .convertPdfToSlide(slidesData);
+    } else {
+      setLoading(false);
+      setStatus("✅ Slides created successfully!");
+      console.log("Slides created successfully!");
+    }
+  }
 
   const convertPDF = async () => {
     if (!pdfFile) {
@@ -119,18 +83,14 @@ function App() {
 
     try {
       setLoading(true);
-      setProgress(10);
       setStatus("Reading PDF file...");
 
-      // Step 1: Convert PDF to base64
       const pdfBase64 = await fileToBase64(pdfFile);
 
-      setProgress(30);
       setStatus("Uploading to server...");
 
-      // Step 2: Call Firebase Cloud Function
 
-      // send buffer to firebase
+      // call firebase function (AI integration & data formatting)
       const response = await convertPdfToSlides(pdfBase64);
       // const response = dummySlidesData;
 
@@ -138,51 +98,15 @@ function App() {
         throw new Error("No data received from Firebase function");
       }
 
-      setProgress(70);
-
       const slidesData: SlideData = response.data as SlideData;
-      console.log("Slides data received:", slidesData);
 
       setStatus(`AI generated ${slidesData.slides.length} slides. Creating in Google Slides...`);
-      setProgress(85);
 
       // Step 3: Call Google Apps Script function to create slides
-      if (google?.script?.run) {
-        google.script.run
-          .withSuccessHandler(() => {
-            setLoading(false);
-            setProgress(100);
-            setStatus("✅ Slides created successfully!");
-            console.log("Slides created successfully!");
-
-            // Reset after 3 seconds
-            setTimeout(() => {
-              setStatus("");
-              setProgress(0);
-              setPdfFile(null);
-              if (fileInputRef.current) {
-                fileInputRef.current.value = '';
-              }
-            }, 3000);
-          })
-          .withFailureHandler((error: any) => {
-            setLoading(false);
-            setProgress(0);
-            setStatus("❌ Error creating slides in Google Slides");
-            console.error("Google Apps Script error:", error);
-            alert("Error creating slides: " + error.message);
-          })
-          .convertPdfToSlide(slidesData);
-      } else {
-        setLoading(false);
-        setProgress(100);
-        setStatus("✅ Slides created successfully!");
-        console.log("Slides created successfully!");
-      }
+      callGoogleAppScript(slidesData);
 
     } catch (error: any) {
       setLoading(false);
-      setProgress(0);
       console.error("Error:", error);
 
       // Handle specific error types
@@ -255,17 +179,14 @@ function App() {
         )}
 
         {/* Progress Bar */}
-        {loading && progress > 0 && (
+        {loading && (
           <div className="w-full">
             <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
               <div
                 className="bg-blue-500 h-2 rounded-full transition-all duration-300 ease-out"
-                style={{ width: `${progress}%` }}
+                style={{ width: `100%` }}
               />
             </div>
-            <p className="text-xs text-center text-gray-500 mt-1">
-              {progress}%
-            </p>
           </div>
         )}
 
