@@ -44,7 +44,7 @@ function App() {
     }
   };
 
-  const callGoogleAppScript = (slidesData: SlideData) => {
+  const callGoogleAppScript = (slidesData: SlideData[]) => {
     if (google?.script?.run) {
       google.script.run
         .withSuccessHandler(() => {
@@ -75,7 +75,7 @@ function App() {
     }
   }
 
-  const convertPDF = async () => {
+  const handleGenerateSlidesButtonClick = async () => {
     if (!pdfFile) {
       alert("Please upload a PDF first!");
       return;
@@ -89,18 +89,16 @@ function App() {
 
       setStatus("Uploading to server...");
 
-
       // call firebase function (AI integration & data formatting)
       const response = await convertPdfToSlides(pdfBase64);
-      // const response = dummySlidesData;
 
       if (!response.data) {
         throw new Error("No data received from Firebase function");
       }
 
-      const slidesData: SlideData = response.data as SlideData;
+      const slidesData: SlideData[] = response.data as SlideData[];
 
-      setStatus(`AI generated ${slidesData.slides.length} slides. Creating in Google Slides...`);
+      setStatus(`AI generated ${slidesData.length} slides. Creating in Google Slides...`);
 
       // Step 3: Call Google Apps Script function to create slides
       callGoogleAppScript(slidesData);
@@ -111,13 +109,13 @@ function App() {
 
       // Handle specific error types
       if (error.message?.includes('quota')) {
-        setStatus("❌ OpenAI API quota exceeded");
+        setStatus("OpenAI API quota exceeded");
         alert("OpenAI API quota exceeded. Please try again later.");
       } else if (error.message?.includes('extract text')) {
-        setStatus("❌ Could not extract text from PDF");
+        setStatus("Could not extract text from PDF");
         alert("Could not extract text from PDF. It might be a scanned image.");
       } else {
-        setStatus("❌ Error: " + error.message);
+        setStatus("Error: " + error.message);
         alert("Error: " + error.message);
       }
     }
@@ -192,7 +190,7 @@ function App() {
 
         {/* Generate Button */}
         <button
-          onClick={convertPDF}
+          onClick={handleGenerateSlidesButtonClick}
           disabled={loading || !pdfFile}
           className={`w-full text-white px-4 py-2 rounded-full flex items-center justify-center gap-2 transition-colors ${loading || !pdfFile
             ? 'bg-gray-300 cursor-not-allowed'

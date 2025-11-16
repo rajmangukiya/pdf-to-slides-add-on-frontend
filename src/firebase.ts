@@ -17,7 +17,7 @@ const functions = getFunctions(app);
 // Connect to emulator in development
 if (process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost') {
     connectFunctionsEmulator(functions, 'localhost', 5001);
-    console.log('🔧 Connected to Functions Emulator');
+    console.log('Connected to Functions Emulator');
 }
 
 export { functions };

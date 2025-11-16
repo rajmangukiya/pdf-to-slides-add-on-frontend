@@ -1,8 +1,10 @@
 export type SlideData = {
-    slides: [
-        {
-            title: string;
-            bullets: string[];
-        }
-    ]
+    page: number;
+    title: string;
+    bullets: string[];
+    images: {
+        base64: string;
+        width: number;
+        height: number;
+    }[];
 }
